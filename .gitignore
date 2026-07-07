@@ -1,0 +1,20 @@
+@"
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Environment variables (NEVER commit secrets/passwords)
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+"@ | Out-File -Encoding utf8 .gitignore
