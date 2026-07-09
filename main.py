@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from database import engine,Base
 from app.auth import models
 from app.auth.routes  import router as auth_router
+from app.restaurants import models as restaurant_models
+from app.menu import models as menu_models
+
 Base.metadata.create_all(bind=engine)
 
 app=FastAPI()
