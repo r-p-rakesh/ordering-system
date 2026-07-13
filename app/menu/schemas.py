@@ -34,3 +34,10 @@ class MenuItemResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class MenuItemUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    image_url: Optional[str] = None
+    is_available: Optional[bool] = None
