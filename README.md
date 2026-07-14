@@ -1,6 +1,6 @@
 # Food Ordering System
 
-A multi-restaurant food ordering platform built from a real local problem: long wait times at a pizza café in my hometown. Customers order online, restaurant owners manage their menu and orders, and the platform takes a 5% commission per order — similar in spirit to Swiggy/Zomato, built from scratch to understand every layer of a real production system.
+A multi-restaurant food ordering platform built from a real local problem: long wait times at a pizza café in my hometown. Customers order online, restaurant owners manage their menu and orders, and the platform takes a  commission per order — similar in spirit to Swiggy/Zomato, built from scratch to understand every layer of a real production system.
 
 ## Why this project
 
