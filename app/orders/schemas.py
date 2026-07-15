@@ -1,6 +1,10 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from decimal import Decimal
+from app.orders.models import OrderStatusEnum
+
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatusEnum
 
 class OrderItemCreate(BaseModel):
     menu_item_id: int

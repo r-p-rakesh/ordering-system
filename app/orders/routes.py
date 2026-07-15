@@ -7,6 +7,7 @@ from app.auth.utils import get_current_user
 from app.menu.models import MenuItemVariant
 from app.orders.models import Order, OrderItem
 from app.orders.schemas import OrderCreate, OrderResponse
+from app.orders.schemas import OrderStatusUpdate  
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -56,3 +57,42 @@ def place_order(
     db.commit()
     db.refresh(new_order)
     return new_order
+
+@router.get("/restaurant/{restaurant_id}", response_model=list[OrderResponse])
+def get_restaurant_orders(
+    restaurant_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.menu.routes import verify_restaurant_owner
+    verify_restaurant_owner(restaurant_id, current_user, db)
+
+    return db.query(Order).filter(Order.restaurant_id == restaurant_id).order_by(Order.created_at.desc()).all()
+
+@router.get("/my-orders", response_model=list[OrderResponse])
+def get_my_orders(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return db.query(Order).filter(Order.customer_id == current_user.id).order_by(Order.created_at.desc()).all()
+
+
+
+@router.patch("/{order_id}/status", response_model=OrderResponse)
+def update_order_status(
+    order_id: int,
+    status_update: OrderStatusUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    from app.menu.routes import verify_restaurant_owner
+    verify_restaurant_owner(order.restaurant_id, current_user, db)
+
+    order.status = status_update.status
+    db.commit()
+    db.refresh(order)
+    return order
