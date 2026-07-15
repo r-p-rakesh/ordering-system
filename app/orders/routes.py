@@ -8,6 +8,11 @@ from app.menu.models import MenuItemVariant
 from app.orders.models import Order, OrderItem
 from app.orders.schemas import OrderCreate, OrderResponse
 from app.orders.schemas import OrderStatusUpdate  
+from fastapi import WebSocket, WebSocketDisconnect
+from app.orders.websocket import manager
+from jose import jwt, JWTError
+from app.auth.utils import JWT_SECRET_KEY, JWT_ALGORITHM
+
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -76,10 +81,8 @@ def get_my_orders(
 ):
     return db.query(Order).filter(Order.customer_id == current_user.id).order_by(Order.created_at.desc()).all()
 
-
-
 @router.patch("/{order_id}/status", response_model=OrderResponse)
-def update_order_status(
+async def update_order_status(
     order_id: int,
     status_update: OrderStatusUpdate,
     current_user: User = Depends(get_current_user),
@@ -95,4 +98,30 @@ def update_order_status(
     order.status = status_update.status
     db.commit()
     db.refresh(order)
+
+    await manager.send_to_user(order.customer_id, {
+        "order_id": order.id,
+        "status": order.status.value,
+    })
+
     return order
+
+
+@router.websocket("/ws")
+async def order_status_socket(websocket: WebSocket):
+    await websocket.accept()
+
+    try:
+        token = await websocket.receive_text()  # first message must be the JWT
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("user_id")
+    except (JWTError, Exception):
+        await websocket.close(code=1008)
+        return
+
+    manager.active_connections[user_id] = websocket
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(user_id)
