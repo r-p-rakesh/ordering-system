@@ -6,10 +6,11 @@ from app.auth.models import User, RoleEnum
 from app.auth.utils import get_current_user
 from app.menu.models import MenuItemVariant
 from app.orders.models import Order, OrderItem,OrderStatusEnum
-from app.orders.schemas import OrderCreate, OrderResponse
+from app.orders.schemas import OrderCreate, OrderResponse,RestaurantPerformance, AdminDashboardSummary
 from app.orders.schemas import OrderStatusUpdate  
 from fastapi import WebSocket, WebSocketDisconnect
 from app.orders.websocket import manager
+from app.restaurants.models import Restaurant
 from jose import jwt, JWTError
 from app.auth.utils import JWT_SECRET_KEY, JWT_ALGORITHM
 
@@ -191,3 +192,46 @@ def get_best_sellers(
         BestSeller(menu_item_id=r[0], name=r[1], total_quantity_sold=r[2])
         for r in results
     ]
+
+@router.get("/admin/dashboard", response_model=AdminDashboardSummary)
+def get_admin_dashboard(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Admin access only")
+
+    total_orders = db.query(Order).count()
+    total_commission = db.query(func.coalesce(func.sum(Order.commission_amount), 0)).scalar()
+    total_restaurants = db.query(Restaurant).count()
+
+    breakdown_results = (
+        db.query(
+            Restaurant.id,
+            Restaurant.name,
+            func.count(Order.id).label("total_orders"),
+            func.coalesce(func.sum(Order.total_amount), 0).label("total_revenue"),
+            func.coalesce(func.sum(Order.commission_amount), 0).label("total_commission"),
+        )
+        .outerjoin(Order, Order.restaurant_id == Restaurant.id)
+        .group_by(Restaurant.id, Restaurant.name)
+        .all()
+    )
+
+    breakdown = [
+        RestaurantPerformance(
+            restaurant_id=r[0],
+            restaurant_name=r[1],
+            total_orders=r[2],
+            total_revenue=r[3],
+            total_commission=r[4],
+        )
+        for r in breakdown_results
+    ]
+
+    return AdminDashboardSummary(
+        total_orders_platform_wide=total_orders,
+        total_commission_earned=total_commission,
+        total_restaurants=total_restaurants,
+        restaurant_breakdown=breakdown,
+    )

@@ -37,8 +37,8 @@ Built as a **modular monolith** — a single FastAPI application organized into 
 - ✅ Menu CRUD (create, read, update, delete) with size variants and add-ons, restricted to the owning restaurant's owner
 - ✅ Order placement and order history
 - ✅ Real-time order status via WebSockets
-- 🔲 Restaurant owner dashboard (orders, revenue, best-sellers)
-- 🔲 Admin dashboard (cross-restaurant commission tracking)
+- ✅ Restaurant owner dashboard (orders, revenue, best-sellers)
+- ✅ Admin dashboard (cross-restaurant commission tracking)
 - 🔲 Redis caching for menu endpoints
 - 🔲 Background jobs for commission settlement
 - 🔲 Deployment

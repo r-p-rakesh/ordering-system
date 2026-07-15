@@ -50,3 +50,16 @@ class BestSeller(BaseModel):
     menu_item_id: int
     name: str
     total_quantity_sold: int
+
+class RestaurantPerformance(BaseModel):
+    restaurant_id: int
+    restaurant_name: str
+    total_orders: int
+    total_revenue: Decimal
+    total_commission: Decimal
+
+class AdminDashboardSummary(BaseModel):
+    total_orders_platform_wide: int
+    total_commission_earned: Decimal
+    total_restaurants: int
+    restaurant_breakdown: List[RestaurantPerformance]
