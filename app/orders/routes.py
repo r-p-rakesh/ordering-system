@@ -5,13 +5,18 @@ from database import get_db
 from app.auth.models import User, RoleEnum
 from app.auth.utils import get_current_user
 from app.menu.models import MenuItemVariant
-from app.orders.models import Order, OrderItem
+from app.orders.models import Order, OrderItem,OrderStatusEnum
 from app.orders.schemas import OrderCreate, OrderResponse
 from app.orders.schemas import OrderStatusUpdate  
 from fastapi import WebSocket, WebSocketDisconnect
 from app.orders.websocket import manager
 from jose import jwt, JWTError
 from app.auth.utils import JWT_SECRET_KEY, JWT_ALGORITHM
+
+from sqlalchemy import func
+from app.menu.models import MenuItem
+from app.orders.schemas import DashboardSummary, BestSeller
+from typing import List
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -125,3 +130,64 @@ async def order_status_socket(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(user_id)
+
+
+
+@router.get("/dashboard/{restaurant_id}/summary", response_model=DashboardSummary)
+def get_dashboard_summary(
+    restaurant_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.menu.routes import verify_restaurant_owner
+    verify_restaurant_owner(restaurant_id, current_user, db)
+
+    orders_query = db.query(Order).filter(Order.restaurant_id == restaurant_id)
+
+    total_orders = orders_query.count()
+    total_revenue = db.query(func.coalesce(func.sum(Order.total_amount), 0)).filter(
+        Order.restaurant_id == restaurant_id
+    ).scalar()
+    total_commission = db.query(func.coalesce(func.sum(Order.commission_amount), 0)).filter(
+        Order.restaurant_id == restaurant_id
+    ).scalar()
+    pending_orders = orders_query.filter(
+        Order.status.in_([OrderStatusEnum.placed, OrderStatusEnum.preparing])
+    ).count()
+
+    return DashboardSummary(
+        total_orders=total_orders,
+        total_revenue=total_revenue,
+        total_commission_paid=total_commission,
+        pending_orders=pending_orders,
+    )
+
+
+@router.get("/dashboard/{restaurant_id}/best-sellers", response_model=List[BestSeller])
+def get_best_sellers(
+    restaurant_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.menu.routes import verify_restaurant_owner
+    verify_restaurant_owner(restaurant_id, current_user, db)
+
+    results = (
+        db.query(
+            MenuItem.id,
+            MenuItem.name,
+            func.sum(OrderItem.quantity).label("total_quantity_sold"),
+        )
+        .join(OrderItem, OrderItem.menu_item_id == MenuItem.id)
+        .join(Order, Order.id == OrderItem.order_id)
+        .filter(Order.restaurant_id == restaurant_id)
+        .group_by(MenuItem.id, MenuItem.name)
+        .order_by(func.sum(OrderItem.quantity).desc())
+        .limit(5)
+        .all()
+    )
+
+    return [
+        BestSeller(menu_item_id=r[0], name=r[1], total_quantity_sold=r[2])
+        for r in results
+    ]

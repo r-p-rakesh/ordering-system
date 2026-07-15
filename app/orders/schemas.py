@@ -3,6 +3,7 @@ from typing import List, Optional
 from decimal import Decimal
 from app.orders.models import OrderStatusEnum
 
+
 class OrderStatusUpdate(BaseModel):
     status: OrderStatusEnum
 
@@ -36,3 +37,16 @@ class OrderResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+
+class DashboardSummary(BaseModel):
+    total_orders: int
+    total_revenue: Decimal
+    total_commission_paid: Decimal
+    pending_orders: int
+
+class BestSeller(BaseModel):
+    menu_item_id: int
+    name: str
+    total_quantity_sold: int
