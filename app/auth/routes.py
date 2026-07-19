@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 from database import get_db
 from app.auth.models import User
 from app.auth.schemas import UserLogin, UserResponse,UserSignup, Token
-from app.auth.utils import hash_password,verify_password,create_access_token,get_current_user
+from app.auth.utils import hash_password,verify_password,create_access_token,get_current_user,security
+from app.auth.models import BlacklistedToken
+from fastapi.security import HTTPAuthorizationCredentials
 
 router  =APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -34,3 +36,15 @@ def login(credential: UserLogin, db:Session = Depends(get_db)):
 @router.get("/me",response_model=UserResponse)
 def get_me(current_user: User =Depends(get_current_user)):
     return current_user
+
+
+
+@router.post("/logout")
+def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    token = credentials.credentials
+    db.add(BlacklistedToken(token=token))
+    db.commit()
+    return {"detail": "Successfully logged out"}

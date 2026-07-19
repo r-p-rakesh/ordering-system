@@ -30,6 +30,11 @@ def create_access_token(data: dict) -> str:
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
     token = credentials.credentials
     credentials_exception = HTTPException(status_code=401, detail="Could not validate credentials")
+
+    from app.auth.models import BlacklistedToken
+    if db.query(BlacklistedToken).filter(BlacklistedToken.token == token).first():
+        raise credentials_exception
+
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
         user_id: int = payload.get("user_id")

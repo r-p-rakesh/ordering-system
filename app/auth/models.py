@@ -19,3 +19,10 @@ class User(Base):
     phone = Column(String(15))
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class BlacklistedToken(Base):
+    __tablename__ = "blacklisted_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String(500), unique=True, nullable=False, index=True)
+    blacklisted_at = Column(DateTime(timezone=True), server_default=func.now())
